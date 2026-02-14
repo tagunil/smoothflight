@@ -30,11 +30,13 @@ class Controller:
         return np.sign(x) * np.sqrt(np.abs(x))
 
     def derive_linear_acceleration(self) -> np.ndarray:
-        parent_position = self._parent.position
-        parent_velocity = self._parent.linear_velocity
+        parent_rotation = self._parent.rotation
 
-        target_position = self._target_position
-        target_velocity = np.zeros_like(parent_velocity)
+        parent_position = self._parent.position @ parent_rotation.T
+        parent_velocity = self._parent.linear_velocity @ parent_rotation.T
+
+        target_position = self._target_position @ parent_rotation.T
+        target_velocity = np.zeros_like(parent_velocity) @ parent_rotation.T
 
         position_error = target_position - parent_position
         velocity_error = target_velocity - parent_velocity
@@ -52,9 +54,11 @@ class Controller:
         final_weight += 0.5 * velocity_error / LINEAR_VELOCITY_THRESHOLD
         final_acceleration = final_weight * LINEAR_ACCELERATION
 
-        return np.where(final_stage,
-                        final_acceleration,
-                        ideal_acceleration)
+        acceleration = np.where(final_stage,
+                                final_acceleration,
+                                ideal_acceleration)
+
+        return acceleration @ parent_rotation
 
     def derive_angular_acceleration(self) -> np.ndarray:
         return np.zeros_like(self._parent.angular_velocity)
