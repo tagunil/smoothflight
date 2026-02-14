@@ -35,6 +35,22 @@ def screen_to_world(position: np.ndarray) -> np.ndarray:
     return (position / DISPLAY_SCALE - WORLD_SIZE / 2) * AXIS_REMAP
 
 
+def draw_ship(screen: pygame.Surface,
+              position: np.ndarray,
+              rotation: np.ndarray):
+    polygon = np.array([[0.0, 2.0],
+                        [1.0, -2.0],
+                        [0.0, -1.0],
+                        [-1.0, -2.0]])
+
+    polygon @= rotation
+    polygon += position
+
+    pygame.draw.polygon(screen,
+                        pygame.Color("white"),
+                        world_to_screen(polygon))
+
+
 def main() -> int:
     world_ = world.World()
 
@@ -62,10 +78,9 @@ def main() -> int:
         screen.fill(pygame.Color("black"))
 
         for ship_ in world_.ships:
-            pygame.draw.circle(screen,
-                               pygame.Color("white"),
-                               world_to_screen(ship_.position),
-                               10.0)
+            draw_ship(screen,
+                      ship_.position,
+                      ship_.rotation)
 
         pygame.display.flip()
 

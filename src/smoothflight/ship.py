@@ -99,6 +99,13 @@ class Ship:
         return self._angular_motion.position
 
     @property
+    def rotation(self) -> np.ndarray:
+        angle = self._angular_motion.position[0]
+        sin_angle, cos_angle = np.sin(angle), np.cos(angle)
+        return np.array([[cos_angle, -sin_angle],
+                         [sin_angle, cos_angle]])
+
+    @property
     def linear_velocity(self) -> np.ndarray:
         return self._linear_motion.velocity
 
