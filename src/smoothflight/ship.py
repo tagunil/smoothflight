@@ -14,7 +14,7 @@ class LinearController:
                  target_position: np.ndarray):
         self._parent = parent
 
-        self.target_position = target_position.copy()
+        self.target_position = target_position
 
     @property
     def target_position(self) -> np.ndarray:
@@ -120,7 +120,7 @@ class Ship:
 
     @destination.setter
     def destination(self, position: np.ndarray):
-        self._linear_control.target_position = position.copy()
+        self._linear_control.target_position = position
 
     def update(self, time_step: float):
         linear_acceleration = self._linear_control.derive_acceleration()
