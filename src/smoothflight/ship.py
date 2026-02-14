@@ -15,8 +15,8 @@ class LinearController:
                  target_velocity: np.ndarray):
         self._parent = parent
 
-        self.target_position = target_position
-        self.target_velocity = target_velocity
+        self.target_position = target_position.copy()
+        self.target_velocity = target_velocity.copy()
 
     @property
     def target_position(self) -> np.ndarray:
@@ -26,7 +26,7 @@ class LinearController:
     def target_position(self, position: np.ndarray):
         assert position.shape == self._parent.position.shape
 
-        self._target_position = position
+        self._target_position = position.copy()
 
     @property
     def target_velocity(self) -> np.ndarray:
@@ -36,7 +36,7 @@ class LinearController:
     def target_velocity(self, velocity: np.ndarray):
         assert velocity.shape == self._parent.position.shape
 
-        self._target_velocity = velocity
+        self._target_velocity = velocity.copy()
 
     @staticmethod
     def signed_sqrt(x: np.ndarray) -> np.ndarray:
@@ -81,8 +81,8 @@ class Integrator:
                  velocity: np.ndarray):
         assert position.shape == velocity.shape
 
-        self.position = position
-        self.velocity = velocity
+        self.position = position.copy()
+        self.velocity = velocity.copy()
 
     def update(self,
                time_step: float,
@@ -136,7 +136,7 @@ class Ship:
 
     @destination.setter
     def destination(self, position: np.ndarray):
-        self._linear_control.target_position = position
+        self._linear_control.target_position = position.copy()
         self._linear_control.target_velocity = np.zeros_like(position)
 
     def update(self, time_step: float):
