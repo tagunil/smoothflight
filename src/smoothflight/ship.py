@@ -11,12 +11,10 @@ LINEAR_ACCELERATION = np.array([2.5, 5.0])
 class LinearController:
     def __init__(self,
                  parent: "Ship",
-                 target_position: np.ndarray,
-                 target_velocity: np.ndarray):
+                 target_position: np.ndarray):
         self._parent = parent
 
         self.target_position = target_position.copy()
-        self.target_velocity = target_velocity.copy()
 
     @property
     def target_position(self) -> np.ndarray:
@@ -27,16 +25,6 @@ class LinearController:
         assert position.shape == self._parent.position.shape
 
         self._target_position = position.copy()
-
-    @property
-    def target_velocity(self) -> np.ndarray:
-        return self._target_velocity
-
-    @target_velocity.setter
-    def target_velocity(self, velocity: np.ndarray):
-        assert velocity.shape == self._parent.position.shape
-
-        self._target_velocity = velocity.copy()
 
     @staticmethod
     def signed_sqrt(x: np.ndarray) -> np.ndarray:
@@ -49,17 +37,15 @@ class LinearController:
         parent_velocity = self._parent.linear_velocity @ parent_rotation.T
 
         target_position = self._target_position @ parent_rotation.T
-        target_velocity = self._target_velocity @ parent_rotation.T
 
         position_error = target_position - parent_position
-        velocity_error = target_velocity - parent_velocity
+        velocity_error = -parent_velocity
 
         final_stage = np.abs(position_error) < POSITION_THRESHOLD
         final_stage &= np.abs(velocity_error) < LINEAR_VELOCITY_THRESHOLD
 
         ideal_product = position_error * LINEAR_ACCELERATION
         ideal_velocity = self.signed_sqrt(2 * ideal_product)
-        ideal_velocity += target_velocity
 
         ideal_weight = np.sign(ideal_velocity - parent_velocity)
         ideal_acceleration = ideal_weight * LINEAR_ACCELERATION
@@ -103,9 +89,7 @@ class Ship:
         self._linear_motion = Integrator(position, linear_velocity)
         self._angular_motion = Integrator(orientation, angular_velocity)
 
-        self._linear_control = LinearController(self,
-                                                position,
-                                                np.zeros_like(position))
+        self._linear_control = LinearController(self, position)
 
     @property
     def position(self) -> np.ndarray:
@@ -137,7 +121,6 @@ class Ship:
     @destination.setter
     def destination(self, position: np.ndarray):
         self._linear_control.target_position = position.copy()
-        self._linear_control.target_velocity = np.zeros_like(position)
 
     def update(self, time_step: float):
         linear_acceleration = self._linear_control.derive_acceleration()
