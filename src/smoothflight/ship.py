@@ -8,12 +8,15 @@ LINEAR_VELOCITY_THRESHOLD = 0.1
 LINEAR_ACCELERATION = np.array([2.5, 5.0])
 
 
-class Controller:
+class LinearController:
     def __init__(self,
                  parent: "Ship",
-                 target_position: np.ndarray):
+                 target_position: np.ndarray,
+                 target_velocity: np.ndarray):
         self._parent = parent
+
         self.target_position = target_position
+        self.target_velocity = target_velocity
 
     @property
     def target_position(self) -> np.ndarray:
@@ -25,18 +28,28 @@ class Controller:
 
         self._target_position = position
 
+    @property
+    def target_velocity(self) -> np.ndarray:
+        return self._target_velocity
+
+    @target_velocity.setter
+    def target_velocity(self, velocity: np.ndarray):
+        assert velocity.shape == self._parent.position.shape
+
+        self._target_velocity = velocity
+
     @staticmethod
     def signed_sqrt(x: np.ndarray) -> np.ndarray:
         return np.sign(x) * np.sqrt(np.abs(x))
 
-    def derive_linear_acceleration(self) -> np.ndarray:
+    def derive_acceleration(self) -> np.ndarray:
         parent_rotation = self._parent.rotation
 
         parent_position = self._parent.position @ parent_rotation.T
         parent_velocity = self._parent.linear_velocity @ parent_rotation.T
 
         target_position = self._target_position @ parent_rotation.T
-        target_velocity = np.zeros_like(parent_velocity) @ parent_rotation.T
+        target_velocity = self._target_velocity @ parent_rotation.T
 
         position_error = target_position - parent_position
         velocity_error = target_velocity - parent_velocity
@@ -46,6 +59,7 @@ class Controller:
 
         ideal_product = position_error * LINEAR_ACCELERATION
         ideal_velocity = self.signed_sqrt(2 * ideal_product)
+        ideal_velocity += target_velocity
 
         ideal_weight = np.sign(ideal_velocity - parent_velocity)
         ideal_acceleration = ideal_weight * LINEAR_ACCELERATION
@@ -59,9 +73,6 @@ class Controller:
                                 ideal_acceleration)
 
         return acceleration @ parent_rotation
-
-    def derive_angular_acceleration(self) -> np.ndarray:
-        return np.zeros_like(self._parent.angular_velocity)
 
 
 class Integrator:
@@ -92,7 +103,9 @@ class Ship:
         self._linear_motion = Integrator(position, linear_velocity)
         self._angular_motion = Integrator(orientation, angular_velocity)
 
-        self._controller = Controller(self, position)
+        self._linear_control = LinearController(self,
+                                                position,
+                                                np.zeros_like(position))
 
     @property
     def position(self) -> np.ndarray:
@@ -119,15 +132,16 @@ class Ship:
 
     @property
     def destination(self) -> np.ndarray:
-        return self._controller.target_position
+        return self._linear_control.target_position
 
     @destination.setter
     def destination(self, position: np.ndarray):
-        self._controller.target_position = position
+        self._linear_control.target_position = position
+        self._linear_control.target_velocity = np.zeros_like(position)
 
     def update(self, time_step: float):
-        linear_acceleration = self._controller.derive_linear_acceleration()
-        angular_acceleration = self._controller.derive_angular_acceleration()
+        linear_acceleration = self._linear_control.derive_acceleration()
+        angular_acceleration = np.zeros_like(self.angular_velocity)
 
         self._linear_motion.update(time_step, linear_acceleration)
         self._angular_motion.update(time_step, angular_acceleration)
