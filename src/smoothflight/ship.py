@@ -1,3 +1,5 @@
+from typing import Callable
+
 import numpy as np
 
 # Final stage thresholds
@@ -117,11 +119,22 @@ class AngularController:
 class Integrator:
     def __init__(self,
                  position: np.ndarray,
-                 velocity: np.ndarray):
+                 velocity: np.ndarray,
+                 wrap: Callable[[np.ndarray], np.ndarray] | None = None):
         assert position.shape == velocity.shape
 
-        self.position = position.copy()
-        self.velocity = velocity.copy()
+        self._position = position.copy()
+        self._velocity = velocity.copy()
+
+        self._wrap = wrap
+
+    @property
+    def position(self) -> np.ndarray:
+        return self._position
+
+    @property
+    def velocity(self) -> np.ndarray:
+        return self._velocity
 
     def update(self,
                time_step: float,
@@ -129,8 +142,11 @@ class Integrator:
         assert acceleration.shape == self.velocity.shape
 
         # Semi-implicit Euler method: velocity first
-        self.velocity += acceleration * time_step
-        self.position += self.velocity * time_step
+        self._velocity += acceleration * time_step
+        self._position += self.velocity * time_step
+
+        if self._wrap is not None:
+            self._position = self._wrap(self._position)
 
 
 class Ship:
@@ -139,8 +155,11 @@ class Ship:
                  orientation: np.ndarray,
                  linear_velocity: np.ndarray,
                  angular_velocity: np.ndarray):
-        self._linear_motion = Integrator(position, linear_velocity)
-        self._angular_motion = Integrator(orientation, angular_velocity)
+        self._linear_motion = Integrator(position,
+                                         linear_velocity)
+        self._angular_motion = Integrator(orientation,
+                                          angular_velocity,
+                                          wrap_angle)
 
         self._linear_control = LinearController(self, position)
         self._angular_control = AngularController(self)
@@ -182,6 +201,3 @@ class Ship:
 
         self._linear_motion.update(time_step, linear_acceleration)
         self._angular_motion.update(time_step, angular_acceleration)
-
-        orientation = wrap_angle(self._angular_motion.position)
-        self._angular_motion.position = orientation
