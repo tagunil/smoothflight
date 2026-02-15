@@ -8,6 +8,9 @@ ORIENTATION_THRESHOLD = 0.1
 LINEAR_VELOCITY_THRESHOLD = 0.5
 ANGULAR_VELOCITY_THRESHOLD = 0.1
 
+# Close range threshold
+TRANSLATION_THRESHOLD = 2.5
+
 # Maximum possible accelerations for the ship
 LINEAR_ACCELERATION = np.array([2.5, 5.0])
 ANGULAR_ACCELERATION = np.array([1.0])
@@ -74,7 +77,7 @@ class AngularController:
         ship_velocity = self._ship.angular_velocity
 
         position_error = target_position - ship_position
-        if np.linalg.norm(position_error) >= POSITION_THRESHOLD:
+        if np.linalg.norm(position_error) >= TRANSLATION_THRESHOLD:
             target_orientation = np.arctan2(position_error[0],
                                             position_error[1])
         else:
