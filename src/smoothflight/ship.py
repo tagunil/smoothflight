@@ -19,20 +19,8 @@ def wrap_angle(angle: np.ndarray) -> np.ndarray:
 
 class LinearController:
     def __init__(self,
-                 ship: "Ship",
-                 destination: np.ndarray):
+                 ship: "Ship"):
         self._ship = ship
-        self.destination = destination
-
-    @property
-    def destination(self) -> np.ndarray:
-        return self._destination
-
-    @destination.setter
-    def destination(self, position: np.ndarray):
-        assert position.shape == self._ship.position.shape
-
-        self._destination = position.copy()
 
     @staticmethod
     def signed_sqrt(x: np.ndarray) -> np.ndarray:
@@ -161,8 +149,10 @@ class Ship:
                                           angular_velocity,
                                           wrap_angle)
 
-        self._linear_control = LinearController(self, position)
+        self._linear_control = LinearController(self)
         self._angular_control = AngularController(self)
+
+        self.destination = position
 
     @property
     def position(self) -> np.ndarray:
@@ -189,11 +179,13 @@ class Ship:
 
     @property
     def destination(self) -> np.ndarray:
-        return self._linear_control.destination
+        return self._destination
 
     @destination.setter
     def destination(self, position: np.ndarray):
-        self._linear_control.destination = position
+        assert position.shape == self.position.shape
+
+        self._destination = position.copy()
 
     def update(self, time_step: float):
         linear_acceleration = self._linear_control.derive_acceleration()
