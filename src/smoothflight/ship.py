@@ -10,9 +10,9 @@ LINEAR_ACCELERATION = np.array([2.5, 5.0])
 
 class LinearController:
     def __init__(self,
-                 parent: "Ship",
+                 ship: "Ship",
                  target: np.ndarray):
-        self._parent = parent
+        self._ship = ship
         self.target = target
 
     @property
@@ -21,7 +21,7 @@ class LinearController:
 
     @target.setter
     def target(self, position: np.ndarray):
-        assert position.shape == self._parent.position.shape
+        assert position.shape == self._ship.position.shape
 
         self._target = position.copy()
 
@@ -30,15 +30,15 @@ class LinearController:
         return np.sign(x) * np.sqrt(np.abs(x))
 
     def derive_acceleration(self) -> np.ndarray:
-        parent_rotation = self._parent.rotation
+        ship_rotation = self._ship.rotation
 
-        parent_position = self._parent.position @ parent_rotation.T
-        parent_velocity = self._parent.linear_velocity @ parent_rotation.T
+        ship_position = self._ship.position @ ship_rotation.T
+        ship_velocity = self._ship.linear_velocity @ ship_rotation.T
 
-        target_position = self._target @ parent_rotation.T
+        target_position = self._target @ ship_rotation.T
 
-        position_error = target_position - parent_position
-        velocity_error = -parent_velocity
+        position_error = target_position - ship_position
+        velocity_error = -ship_velocity
 
         final_stage = np.abs(position_error) < POSITION_THRESHOLD
         final_stage &= np.abs(velocity_error) < LINEAR_VELOCITY_THRESHOLD
@@ -46,7 +46,7 @@ class LinearController:
         ideal_product = position_error * LINEAR_ACCELERATION
         ideal_velocity = self.signed_sqrt(2 * ideal_product)
 
-        ideal_weight = np.sign(ideal_velocity - parent_velocity)
+        ideal_weight = np.sign(ideal_velocity - ship_velocity)
         ideal_acceleration = ideal_weight * LINEAR_ACCELERATION
 
         final_weight = 0.5 * position_error / POSITION_THRESHOLD
@@ -57,7 +57,7 @@ class LinearController:
                                 final_acceleration,
                                 ideal_acceleration)
 
-        return acceleration @ parent_rotation
+        return acceleration @ ship_rotation
 
 
 class Integrator:
