@@ -11,20 +11,19 @@ LINEAR_ACCELERATION = np.array([2.5, 5.0])
 class LinearController:
     def __init__(self,
                  parent: "Ship",
-                 target_position: np.ndarray):
+                 target: np.ndarray):
         self._parent = parent
-
-        self.target_position = target_position
+        self.target = target
 
     @property
-    def target_position(self) -> np.ndarray:
-        return self._target_position
+    def target(self) -> np.ndarray:
+        return self._target
 
-    @target_position.setter
-    def target_position(self, position: np.ndarray):
+    @target.setter
+    def target(self, position: np.ndarray):
         assert position.shape == self._parent.position.shape
 
-        self._target_position = position.copy()
+        self._target = position.copy()
 
     @staticmethod
     def signed_sqrt(x: np.ndarray) -> np.ndarray:
@@ -36,7 +35,7 @@ class LinearController:
         parent_position = self._parent.position @ parent_rotation.T
         parent_velocity = self._parent.linear_velocity @ parent_rotation.T
 
-        target_position = self._target_position @ parent_rotation.T
+        target_position = self._target @ parent_rotation.T
 
         position_error = target_position - parent_position
         velocity_error = -parent_velocity
@@ -116,11 +115,11 @@ class Ship:
 
     @property
     def destination(self) -> np.ndarray:
-        return self._linear_control.target_position
+        return self._linear_control.target
 
     @destination.setter
     def destination(self, position: np.ndarray):
-        self._linear_control.target_position = position
+        self._linear_control.target = position
 
     def update(self, time_step: float):
         linear_acceleration = self._linear_control.derive_acceleration()
