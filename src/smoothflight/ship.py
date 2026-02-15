@@ -8,6 +8,10 @@ LINEAR_VELOCITY_THRESHOLD = 0.1
 LINEAR_ACCELERATION = np.array([2.5, 5.0])
 
 
+def wrap_angle(angle: np.ndarray) -> np.ndarray:
+    return (angle + np.pi) % (2 * np.pi) - np.pi
+
+
 class LinearController:
     def __init__(self,
                  ship: "Ship",
@@ -127,3 +131,6 @@ class Ship:
 
         self._linear_motion.update(time_step, linear_acceleration)
         self._angular_motion.update(time_step, angular_acceleration)
+
+        orientation = wrap_angle(self._angular_motion.position)
+        self._angular_motion.position = orientation
