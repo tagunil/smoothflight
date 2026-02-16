@@ -26,10 +26,50 @@ class LinearController:
         self._ship = ship
 
     @staticmethod
-    def signed_sqrt(x: np.ndarray) -> np.ndarray:
+    def _signed_sqrt(x: np.ndarray) -> np.ndarray:
         return np.sign(x) * np.sqrt(np.abs(x))
 
-    def derive_acceleration(self) -> np.ndarray:
+    def _ideal_acceleration(self,
+                            relative_position: np.ndarray,
+                            relative_velocity: np.ndarray) -> np.ndarray:
+        ideal_product = 2 * relative_position * LINEAR_ACCELERATION
+        ideal_velocity = self._signed_sqrt(ideal_product)
+
+        sign = np.sign(ideal_velocity + relative_velocity)
+        square = relative_velocity ** 2 + sign * ideal_product
+        square *= np.where(sign != 0.0, np.sqrt(2.0), 1.0)
+        sum = np.sqrt(square) + sign * relative_velocity
+        ideal_time = sum / LINEAR_ACCELERATION
+
+        fixed_time = np.max(ideal_time)
+        if fixed_time > 0.0:
+            distance_1 = relative_velocity * fixed_time
+            distance_2 = np.abs(distance_1 + 2 * relative_position)
+            distance_3 = np.sqrt(distance_1 ** 2 + distance_2 ** 2)
+            fixed_acceleration = (distance_2 + distance_3) / fixed_time ** 2
+        else:
+            fixed_acceleration = np.zeros_like(LINEAR_ACCELERATION)
+
+        fixed_product = 2 * relative_position * fixed_acceleration
+        fixed_velocity = self._signed_sqrt(fixed_product)
+
+        weight = np.sign(fixed_velocity + relative_velocity)
+
+        acceleration = weight * fixed_acceleration
+
+        return acceleration
+
+    def _final_acceleration(self,
+                            relative_position: np.ndarray,
+                            relative_velocity: np.ndarray) -> np.ndarray:
+        weight = 0.5 * relative_position / POSITION_THRESHOLD
+        weight += 0.5 * relative_velocity / LINEAR_VELOCITY_THRESHOLD
+
+        acceleration = weight * LINEAR_ACCELERATION
+
+        return acceleration
+
+    def acceleration(self) -> np.ndarray:
         ship_position = self._ship.position
         ship_velocity = self._ship.linear_velocity
 
@@ -46,19 +86,11 @@ class LinearController:
         final_stage = np.abs(relative_position) < POSITION_THRESHOLD
         final_stage &= np.abs(relative_velocity) < LINEAR_VELOCITY_THRESHOLD
 
-        ideal_product = relative_position * LINEAR_ACCELERATION
-        ideal_velocity = self.signed_sqrt(2 * ideal_product)
-
-        ideal_weight = np.sign(ideal_velocity + relative_velocity)
-        ideal_acceleration = ideal_weight * LINEAR_ACCELERATION
-
-        final_weight = 0.5 * relative_position / POSITION_THRESHOLD
-        final_weight += 0.5 * relative_velocity / LINEAR_VELOCITY_THRESHOLD
-        final_acceleration = final_weight * LINEAR_ACCELERATION
-
         acceleration = np.where(final_stage,
-                                final_acceleration,
-                                ideal_acceleration)
+                                self._final_acceleration(relative_position,
+                                                         relative_velocity),
+                                self._ideal_acceleration(relative_position,
+                                                         relative_velocity))
 
         return acceleration @ ship_rotation
 
@@ -69,10 +101,10 @@ class AngularController:
         self._ship = ship
 
     @staticmethod
-    def signed_sqrt(x: np.ndarray) -> np.ndarray:
+    def _signed_sqrt(x: np.ndarray) -> np.ndarray:
         return np.sign(x) * np.sqrt(np.abs(x))
 
-    def derive_acceleration(self) -> np.ndarray:
+    def acceleration(self) -> np.ndarray:
         ship_position = self._ship.position
         target_position = self._ship.destination
 
@@ -94,7 +126,7 @@ class AngularController:
         final_stage &= np.abs(velocity_error) < ANGULAR_VELOCITY_THRESHOLD
 
         ideal_product = orientation_error * ANGULAR_ACCELERATION
-        ideal_velocity = self.signed_sqrt(2 * ideal_product)
+        ideal_velocity = self._signed_sqrt(2 * ideal_product)
 
         ideal_weight = np.sign(ideal_velocity - ship_velocity)
         ideal_acceleration = ideal_weight * ANGULAR_ACCELERATION
@@ -194,8 +226,8 @@ class Ship:
         self._destination = position.copy()
 
     def update(self, time_step: float):
-        linear_acceleration = self._linear_control.derive_acceleration()
-        angular_acceleration = self._angular_control.derive_acceleration()
+        linear_acceleration = self._linear_control.acceleration()
+        angular_acceleration = self._angular_control.acceleration()
 
         self._linear_motion.update(time_step, linear_acceleration)
         self._angular_motion.update(time_step, angular_acceleration)
