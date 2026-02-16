@@ -3,9 +3,7 @@ from typing import Callable
 import numpy as np
 
 # Final stage thresholds
-POSITION_THRESHOLD = 0.5
 ORIENTATION_THRESHOLD = 0.1
-LINEAR_VELOCITY_THRESHOLD = 0.5
 ANGULAR_VELOCITY_THRESHOLD = 0.1
 
 # Close range threshold
@@ -29,9 +27,20 @@ class LinearController:
     def _signed_sqrt(x: np.ndarray) -> np.ndarray:
         return np.sign(x) * np.sqrt(np.abs(x))
 
-    def _ideal_acceleration(self,
-                            relative_position: np.ndarray,
-                            relative_velocity: np.ndarray) -> np.ndarray:
+    def acceleration(self) -> np.ndarray:
+        ship_position = self._ship.position
+        ship_velocity = self._ship.linear_velocity
+
+        target_position = self._ship.destination
+
+        relative_position = target_position - ship_position
+        relative_velocity = -ship_velocity
+
+        ship_rotation = self._ship.rotation
+
+        relative_position @= ship_rotation.T
+        relative_velocity @= ship_rotation.T
+
         ideal_product = 2 * relative_position * LINEAR_ACCELERATION
         ideal_velocity = self._signed_sqrt(ideal_product)
 
@@ -56,41 +65,6 @@ class LinearController:
         weight = np.sign(fixed_velocity + relative_velocity)
 
         acceleration = weight * fixed_acceleration
-
-        return acceleration
-
-    def _final_acceleration(self,
-                            relative_position: np.ndarray,
-                            relative_velocity: np.ndarray) -> np.ndarray:
-        weight = 0.5 * relative_position / POSITION_THRESHOLD
-        weight += 0.5 * relative_velocity / LINEAR_VELOCITY_THRESHOLD
-
-        acceleration = weight * LINEAR_ACCELERATION
-
-        return acceleration
-
-    def acceleration(self) -> np.ndarray:
-        ship_position = self._ship.position
-        ship_velocity = self._ship.linear_velocity
-
-        target_position = self._ship.destination
-
-        relative_position = target_position - ship_position
-        relative_velocity = -ship_velocity
-
-        ship_rotation = self._ship.rotation
-
-        relative_position @= ship_rotation.T
-        relative_velocity @= ship_rotation.T
-
-        final_stage = np.abs(relative_position) < POSITION_THRESHOLD
-        final_stage &= np.abs(relative_velocity) < LINEAR_VELOCITY_THRESHOLD
-
-        acceleration = np.where(final_stage,
-                                self._final_acceleration(relative_position,
-                                                         relative_velocity),
-                                self._ideal_acceleration(relative_position,
-                                                         relative_velocity))
 
         return acceleration @ ship_rotation
 
