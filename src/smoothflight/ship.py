@@ -30,27 +30,30 @@ class LinearController:
         return np.sign(x) * np.sqrt(np.abs(x))
 
     def derive_acceleration(self) -> np.ndarray:
+        ship_position = self._ship.position
+        ship_velocity = self._ship.linear_velocity
+
+        target_position = self._ship.destination
+
+        relative_position = target_position - ship_position
+        relative_velocity = -ship_velocity
+
         ship_rotation = self._ship.rotation
 
-        ship_position = self._ship.position @ ship_rotation.T
-        ship_velocity = self._ship.linear_velocity @ ship_rotation.T
+        relative_position @= ship_rotation.T
+        relative_velocity @= ship_rotation.T
 
-        target_position = self._ship.destination @ ship_rotation.T
+        final_stage = np.abs(relative_position) < POSITION_THRESHOLD
+        final_stage &= np.abs(relative_velocity) < LINEAR_VELOCITY_THRESHOLD
 
-        position_error = target_position - ship_position
-        velocity_error = -ship_velocity
-
-        final_stage = np.abs(position_error) < POSITION_THRESHOLD
-        final_stage &= np.abs(velocity_error) < LINEAR_VELOCITY_THRESHOLD
-
-        ideal_product = position_error * LINEAR_ACCELERATION
+        ideal_product = relative_position * LINEAR_ACCELERATION
         ideal_velocity = self.signed_sqrt(2 * ideal_product)
 
-        ideal_weight = np.sign(ideal_velocity - ship_velocity)
+        ideal_weight = np.sign(ideal_velocity + relative_velocity)
         ideal_acceleration = ideal_weight * LINEAR_ACCELERATION
 
-        final_weight = 0.5 * position_error / POSITION_THRESHOLD
-        final_weight += 0.5 * velocity_error / LINEAR_VELOCITY_THRESHOLD
+        final_weight = 0.5 * relative_position / POSITION_THRESHOLD
+        final_weight += 0.5 * relative_velocity / LINEAR_VELOCITY_THRESHOLD
         final_acceleration = final_weight * LINEAR_ACCELERATION
 
         acceleration = np.where(final_stage,
