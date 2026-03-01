@@ -86,13 +86,13 @@ def draw_target(screen: pygame.Surface,
 
 
 def main() -> int:
-    world_ = world.World()
+    _world = world.World()
 
-    ship_ = ship.Ship(np.array([0.0, 0.0]),
+    _ship = ship.Ship(np.array([0.0, 0.0]),
                       np.array([0.0]),
                       np.array([0.0, 0.0]),
                       np.array([0.0]))
-    world_.ships.append(ship_)
+    _world.ships.append(_ship)
 
     destination = np.array([0.0, 0.0])
 
@@ -110,24 +110,23 @@ def main() -> int:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == MOUSE_BUTTON_LEFT:
                     destination = screen_to_world(np.array(event.pos))
-                    world_.ships[0].destination = destination
+                    _ship.destination = destination
 
         screen.fill(pygame.Color("black"))
 
-        for ship_ in world_.ships:
-            draw_ship(screen,
-                      ship_.position,
-                      ship_.rotation)
+        draw_ship(screen,
+                  _ship.position,
+                  _ship.rotation)
 
         if not close_approach(destination,
-                              world_.ships[0].position,
-                              world_.ships[0].linear_velocity):
+                              _ship.position,
+                              _ship.linear_velocity):
             draw_target(screen, destination)
 
         pygame.display.flip()
 
         for step in range(STEP_RATE // FRAME_RATE):
-            world_.update(1.0 / STEP_RATE)
+            _world.update(1.0 / STEP_RATE)
 
         clock.tick(FRAME_RATE)
 
