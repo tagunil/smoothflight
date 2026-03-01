@@ -18,14 +18,14 @@ def wrap_angle(angle: np.ndarray) -> np.ndarray:
     return (angle + np.pi) % (2 * np.pi) - np.pi
 
 
+def signed_sqrt(x: np.ndarray) -> np.ndarray:
+    return np.sign(x) * np.sqrt(np.abs(x))
+
+
 class LinearController:
     def __init__(self,
                  ship: "Ship"):
         self._ship = ship
-
-    @staticmethod
-    def _signed_sqrt(x: np.ndarray) -> np.ndarray:
-        return np.sign(x) * np.sqrt(np.abs(x))
 
     def acceleration(self) -> np.ndarray:
         ship_position = self._ship.position
@@ -42,7 +42,7 @@ class LinearController:
         relative_velocity @= ship_rotation.T
 
         ideal_product = 2 * relative_position * LINEAR_ACCELERATION
-        ideal_velocity = self._signed_sqrt(ideal_product)
+        ideal_velocity = signed_sqrt(ideal_product)
 
         sign = np.sign(ideal_velocity + relative_velocity)
         square = relative_velocity ** 2 + sign * ideal_product
@@ -60,7 +60,7 @@ class LinearController:
             fixed_acceleration = np.zeros_like(LINEAR_ACCELERATION)
 
         fixed_product = 2 * relative_position * fixed_acceleration
-        fixed_velocity = self._signed_sqrt(fixed_product)
+        fixed_velocity = signed_sqrt(fixed_product)
 
         weight = np.sign(fixed_velocity + relative_velocity)
 
@@ -73,10 +73,6 @@ class AngularController:
     def __init__(self,
                  ship: "Ship"):
         self._ship = ship
-
-    @staticmethod
-    def _signed_sqrt(x: np.ndarray) -> np.ndarray:
-        return np.sign(x) * np.sqrt(np.abs(x))
 
     def acceleration(self) -> np.ndarray:
         ship_position = self._ship.position
@@ -100,7 +96,7 @@ class AngularController:
         final_stage &= np.abs(velocity_error) < ANGULAR_VELOCITY_THRESHOLD
 
         ideal_product = orientation_error * ANGULAR_ACCELERATION
-        ideal_velocity = self._signed_sqrt(2 * ideal_product)
+        ideal_velocity = signed_sqrt(2 * ideal_product)
 
         ideal_weight = np.sign(ideal_velocity - ship_velocity)
         ideal_acceleration = ideal_weight * ANGULAR_ACCELERATION
