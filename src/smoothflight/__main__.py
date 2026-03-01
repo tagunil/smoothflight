@@ -26,6 +26,18 @@ AXIS_REMAP = np.array([1.0, -1.0])
 # Left mouse button index
 MOUSE_BUTTON_LEFT = 1
 
+# Close range thresholds
+POSITION_THRESHOLD = 0.1
+VELOCITY_THRESHOLD = 0.1
+
+
+def close_approach(destination: np.ndarray,
+                   position: np.ndarray,
+                   velocity: np.ndarray) -> bool:
+    nearby = np.linalg.norm(destination - position) < POSITION_THRESHOLD
+    nearby = nearby and np.linalg.norm(velocity) < VELOCITY_THRESHOLD
+    return nearby
+
 
 def world_to_screen(position: np.ndarray) -> np.ndarray:
     return SCREEN_SIZE / 2 + position * DISPLAY_SCALE * AXIS_REMAP
@@ -51,6 +63,28 @@ def draw_ship(screen: pygame.Surface,
                         world_to_screen(polygon))
 
 
+def draw_target(screen: pygame.Surface,
+                position: np.ndarray):
+    line_1 = np.array([[-0.75, -0.75],
+                       [0.75, 0.75]])
+    line_2 = np.array([[-0.75, 0.75],
+                       [0.75, -0.75]])
+
+    line_1 += position
+    line_2 += position
+
+    pygame.draw.line(screen,
+                     pygame.Color("white"),
+                     world_to_screen(line_1[0]),
+                     world_to_screen(line_1[1]),
+                     3)
+    pygame.draw.line(screen,
+                     pygame.Color("white"),
+                     world_to_screen(line_2[0]),
+                     world_to_screen(line_2[1]),
+                     3)
+
+
 def main() -> int:
     world_ = world.World()
 
@@ -59,6 +93,8 @@ def main() -> int:
                       np.array([0.0, 0.0]),
                       np.array([0.0]))
     world_.ships.append(ship_)
+
+    destination = np.array([0.0, 0.0])
 
     pygame.init()
 
@@ -73,7 +109,8 @@ def main() -> int:
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == MOUSE_BUTTON_LEFT:
-                    ship_.destination = screen_to_world(np.array(event.pos))
+                    destination = screen_to_world(np.array(event.pos))
+                    world_.ships[0].destination = destination
 
         screen.fill(pygame.Color("black"))
 
@@ -81,6 +118,11 @@ def main() -> int:
             draw_ship(screen,
                       ship_.position,
                       ship_.rotation)
+
+        if not close_approach(destination,
+                              world_.ships[0].position,
+                              world_.ships[0].linear_velocity):
+            draw_target(screen, destination)
 
         pygame.display.flip()
 
